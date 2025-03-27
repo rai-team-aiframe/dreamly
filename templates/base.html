@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ImageShare - Share AI Generated Images{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/custom.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="{{ url_for('static', path='/js/main.js') }}" defer></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <a href="/">
+                        <h1>ImageShare</h1>
+                    </a>
+                </div>
+                <div class="nav-search">
+                    <div class="search-container">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="Search...">
+                    </div>
+                </div>
+                <div class="nav-menu">
+                    <ul>
+                        <li><a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}"><i class="fas fa-home"></i> Home</a></li>
+                        <li><a href="/explore" class="nav-link {% if request.url.path == '/explore' %}active{% endif %}"><i class="fas fa-compass"></i> Explore</a></li>
+                        <li><a href="/create" class="nav-link {% if request.url.path == '/create' %}active{% endif %}"><i class="fas fa-plus-circle"></i> Create</a></li>
+                        <li><a href="/profile" class="nav-link {% if request.url.path == '/profile' %}active{% endif %}"><i class="fas fa-user"></i> Profile</a></li>
+                        <li class="dropdown">
+                            <a href="#" class="nav-link dropdown-toggle">
+                                <i class="fas fa-bars"></i>
+                            </a>
+                            <div class="dropdown-menu">
+                                <a href="/settings"><i class="fas fa-cog"></i> Settings</a>
+                                <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="nav-mobile">
+                    <button class="mobile-menu-btn">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="mobile-menu">
+                        <ul>
+                            <li><a href="/"><i class="fas fa-home"></i> Home</a></li>
+                            <li><a href="/explore"><i class="fas fa-compass"></i> Explore</a></li>
+                            <li><a href="/create"><i class="fas fa-plus-circle"></i> Create</a></li>
+                            <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
+                            <li><a href="/settings"><i class="fas fa-cog"></i> Settings</a></li>
+                            <li><a href="#" id="mobileLogoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-container">
+            <p>&copy; 2025 ImageShare. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="#">About</a>
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">Help</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Modal container -->
+    <div id="modal-container" class="modal-hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Title</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div id="modal-body">
+                Content goes here
+            </div>
+        </div>
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

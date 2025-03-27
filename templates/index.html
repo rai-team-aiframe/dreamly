@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Home - ImageShare{% endblock %}
+
+{% block head %}
+<script src="{{ url_for('static', path='/js/posts.js') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="feed-container">
+                <h2>Your Feed</h2>
+                
+                <div id="feedPosts" class="posts-container">
+                    <div class="loading-container">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+                
+                <div id="noPostsMessage" class="card" style="display: none;">
+                    <div class="card-body text-center">
+                        <h3>No posts yet</h3>
+                        <p>Follow users or create your own posts to see content here.</p>
+                        <a href="/explore" class="btn btn-primary">Explore Posts</a>
+                        <a href="/create" class="btn btn-success">Create Post</a>
+                    </div>
+                </div>
+                
+                <div id="loadMoreContainer" style="display: none;">
+                    <button id="loadMoreBtn" class="btn btn-secondary btn-block">Load More</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="home-sidebar">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Welcome to ImageShare</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>Create and share AI-generated images with the community.</p>
+                        <a href="/create" class="btn btn-primary btn-block">Create a Post</a>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h3>Popular Tags</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="tags-list">
+                            <a href="/search?q=landscape" class="tag">#landscape</a>
+                            <a href="/search?q=portrait" class="tag">#portrait</a>
+                            <a href="/search?q=abstract" class="tag">#abstract</a>
+                            <a href="/search?q=scifi" class="tag">#scifi</a>
+                            <a href="/search?q=fantasy" class="tag">#fantasy</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h3>Trending Users</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="trendingUsers">
+                            <p class="text-center">Loading trending users...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Post template (hidden, used by JavaScript) -->
+<template id="postTemplate">
+    <div class="post" data-post-id="">
+        <div class="post-header">
+            <a href="/profile/" class="post-user">
+                <img src="/static/img/default-avatar.png" alt="User Avatar" class="post-user-avatar">
+                <div class="post-user-info">
+                    <h3 class="post-username"></h3>
+                    <span class="post-time"></span>
+                </div>
+            </a>
+        </div>
+        <div class="post-image-container">
+            <img src="" alt="Post Image" class="post-image">
+        </div>
+        <div class="post-content">
+            <p class="post-caption"></p>
+            <p class="post-prompt"><strong>Prompt:</strong> <span></span></p>
+        </div>
+        <div class="post-actions">
+            <button class="post-action-btn like-btn">
+                <i class="far fa-heart"></i>
+                <span class="post-action-count">0</span>
+            </button>
+            <a href="/post/" class="post-action-btn">
+                <i class="far fa-comment"></i>
+                <span>Comment</span>
+            </a>
+            <button class="post-action-btn share-btn">
+                <i class="far fa-share-square"></i>
+                <span>Share</span>
+            </button>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Load user feed
+        loadFeed();
+        
+        // Load trending users
+        loadTrendingUsers();
+    });
+    
+    async function loadFeed() {
+        try {
+            const response = await window.app.apiRequest('/users/feed');
+            const feedContainer = document.getElementById('feedPosts');
+            const noPostsMessage = document.getElementById('noPostsMessage');
+            
+            // Clear loading spinner
+            feedContainer.innerHTML = '';
+            
+            if (response.length === 0) {
+                noPostsMessage.style.display = 'block';
+                return;
+            }
+            
+            // Render posts
+            renderPosts(response, feedContainer);
+            
+        } catch (error) {
+            console.error('Error loading feed:', error);
+            window.app.showToast('Error loading feed', 'error');
+        }
+    }
+    
+    function renderPosts(posts, container) {
+        const template = document.getElementById('postTemplate');
+        
+        posts.forEach(post => {
+            const postEl = document.importNode(template.content, true).firstElementChild;
+            
+            // Set post ID
+            postEl.dataset.postId = post.id;
+            
+            // Set post content
+            postEl.querySelector('.post-username').textContent = post.username;
+            postEl.querySelector('.post-time').textContent = window.app.formatDate(post.created_at);
+            postEl.querySelector('.post-caption').textContent = post.caption || '';
+            postEl.querySelector('.post-prompt span').textContent = post.prompt;
+            
+            // Set post image
+            const imgEl = postEl.querySelector('.post-image');
+            imgEl.src = `data:image/jpeg;base64,${post.image_data}`;
+            
+            // Set user profile link
+            const userLink = postEl.querySelector('.post-user');
+            userLink.href = `/profile/${post.username}`;
+            
+            // Set post link
+            const commentLink = postEl.querySelector('.post-actions a');
+            commentLink.href = `/post/${post.id}`;
+            
+            // Handle like button
+            const likeBtn = postEl.querySelector('.like-btn');
+            const likeIcon = likeBtn.querySelector('i');
+            const likeCount = likeBtn.querySelector('.post-action-count');
+            
+            // Update like count
+            likeCount.textContent = post.like_count;
+            
+            // Set initial liked state
+            if (post.liked_by_user) {
+                likeBtn.classList.add('liked');
+                likeIcon.classList.replace('far', 'fas');
+            }
+            
+            // Add event listener for like button
+            likeBtn.addEventListener('click', async () => {
+                try {
+                    const response = await window.app.likePost(post.id, likeBtn);
+                    
+                    // Update the icon
+                    if (response.action === 'liked') {
+                        likeIcon.classList.replace('far', 'fas');
+                    } else {
+                        likeIcon.classList.replace('fas', 'far');
+                    }
+                    
+                } catch (error) {
+                    console.error('Error handling like:', error);
+                }
+            });
+            
+            // Add event listener for share button
+            const shareBtn = postEl.querySelector('.share-btn');
+            shareBtn.addEventListener('click', () => {
+                const postUrl = `${window.location.origin}/post/${post.id}`;
+                
+                // If Web Share API is available
+                if (navigator.share) {
+                    navigator.share({
+                        title: `Post by ${post.username}`,
+                        text: post.caption || 'Check out this image on ImageShare',
+                        url: postUrl
+                    })
+                    .catch(err => console.error('Error sharing:', err));
+                } else {
+                    // Fallback: copy to clipboard
+                    navigator.clipboard.writeText(postUrl)
+                        .then(() => window.app.showToast('Link copied to clipboard', 'success'))
+                        .catch(err => console.error('Error copying:', err));
+                }
+            });
+            
+            container.appendChild(postEl);
+        });
+    }
+    
+    async function loadTrendingUsers() {
+        try {
+            // Simulated trending users for now
+            const trendingUsers = [
+                { username: 'artlover', count: 25 },
+                { username: 'creative_mind', count: 18 },
+                { username: 'designmaster', count: 15 }
+            ];
+            
+            const container = document.getElementById('trendingUsers');
+            container.innerHTML = '';
+            
+            if (trendingUsers.length === 0) {
+                container.innerHTML = '<p class="text-center">No trending users yet</p>';
+                return;
+            }
+            
+            const userList = document.createElement('ul');
+            userList.className = 'user-list';
+            
+            trendingUsers.forEach(user => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `
+                    <a href="/profile/${user.username}" class="trending-user">
+                        <img src="/static/img/default-avatar.png" alt="${user.username}'s Avatar" class="user-avatar">
+                        <div class="user-info">
+                            <h4>${user.username}</h4>
+                            <span>${user.count} posts</span>
+                        </div>
+                    </a>
+                `;
+                userList.appendChild(listItem);
+            });
+            
+            container.appendChild(userList);
+            
+        } catch (error) {
+            console.error('Error loading trending users:', error);
+        }
+    }
+</script>
+{% endblock %}

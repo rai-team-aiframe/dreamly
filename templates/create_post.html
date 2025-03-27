@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Create Post - ImageShare{% endblock %}
+
+{% block head %}
+<script src="{{ url_for('static', path='/js/posts.js') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="create-post-container">
+    <h1>Create a New Post</h1>
+    <p class="lead">Generate an AI image and share it with the community</p>
+    
+    <div class="card">
+        <div class="card-body">
+            <form id="createPostForm">
+                <div class="form-group">
+                    <label for="prompt" class="form-label">Image Prompt</label>
+                    <textarea id="prompt" name="prompt" class="form-control" rows="3" required
+                        placeholder="Describe the image you want to generate..."></textarea>
+                    <small class="form-text text-muted">
+                        Be descriptive about what you want in the image. The better your prompt, the better the results.
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <button type="button" id="generateBtn" class="btn btn-primary">
+                        <i class="fas fa-magic"></i> Generate Image
+                    </button>
+                </div>
+                
+                <div id="imagePreview" class="image-preview" style="display: none;">
+                    <div class="loading-container" id="generationLoading" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Generating your image. This may take a moment...</p>
+                    </div>
+                    <img id="previewImage" src="" alt="Generated Image">
+                </div>
+                
+                <div id="postDetails" style="display: none;">
+                    <div class="form-group">
+                        <label for="caption" class="form-label">Caption (Optional)</label>
+                        <textarea id="caption" name="caption" class="form-control" rows="2"
+                            placeholder="Add a caption to your post..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button type="submit" id="submitPostBtn" class="btn btn-success">
+                            <i class="fas fa-share"></i> Share Post
+                        </button>
+                        <button type="button" id="regenerateBtn" class="btn btn-secondary">
+                            <i class="fas fa-redo"></i> Generate Another
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3>Tips for Great Prompts</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h4>Do:</h4>
+                    <ul>
+                        <li>Be specific about subject, style, setting, lighting, etc.</li>
+                        <li>Include details about mood and atmosphere</li>
+                        <li>Mention specific artists or art styles for inspiration</li>
+                        <li>Specify camera angles or perspectives</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h4>Avoid:</h4>
+                    <ul>
+                        <li>Being too vague or general</li>
+                        <li>Using confusing or contradictory descriptions</li>
+                        <li>Asking for realistic human faces (AI often struggles with these)</li>
+                        <li>Expecting perfect text or words in images</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <h4 class="mt-3">Example Prompts:</h4>
+            <div class="prompt-examples">
+                <div class="example-prompt">
+                    <button class="btn btn-sm btn-outline-primary use-prompt-btn" data-prompt="A serene landscape with snow-capped mountains reflected in a crystal clear lake at sunset, with pink and purple skies">Use</button>
+                    <p>A serene landscape with snow-capped mountains reflected in a crystal clear lake at sunset, with pink and purple skies</p>
+                </div>
+                <div class="example-prompt">
+                    <button class="btn btn-sm btn-outline-primary use-prompt-btn" data-prompt="A futuristic cyberpunk cityscape at night with neon lights, flying cars, and tall skyscrapers in the rain">Use</button>
+                    <p>A futuristic cyberpunk cityscape at night with neon lights, flying cars, and tall skyscrapers in the rain</p>
+                </div>
+                <div class="example-prompt">
+                    <button class="btn btn-sm btn-outline-primary use-prompt-btn" data-prompt="An enchanted forest with giant mushrooms, tiny fairies with glowing wings, and magical creatures, in the style of Studio Ghibli">Use</button>
+                    <p>An enchanted forest with giant mushrooms, tiny fairies with glowing wings, and magical creatures, in the style of Studio Ghibli</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        initCreatePost();
+    });
+    
+    function initCreatePost() {
+        const form = document.getElementById('createPostForm');
+        const promptInput = document.getElementById('prompt');
+        const generateBtn = document.getElementById('generateBtn');
+        const regenerateBtn = document.getElementById('regenerateBtn');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImage = document.getElementById('previewImage');
+        const generationLoading = document.getElementById('generationLoading');
+        const postDetails = document.getElementById('postDetails');
+        const promptExampleBtns = document.querySelectorAll('.use-prompt-btn');
+        
+        let generatedImageData = null;
+        
+        // Handle generate button click
+        generateBtn.addEventListener('click', async () => {
+            const prompt = promptInput.value.trim();
+            
+            if (!prompt) {
+                window.app.showToast('Please enter a prompt', 'error');
+                return;
+            }
+            
+            try {
+                // Show loading
+                imagePreview.style.display = 'flex';
+                generationLoading.style.display = 'flex';
+                generateBtn.disabled = true;
+                generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+                
+                // Call API to generate image
+                const postData = {
+                    prompt: prompt,
+                    caption: ''  // Empty caption for generation only
+                };
+                
+                const response = await window.app.apiRequest('/posts', 'POST', postData);
+                
+                // Hide loading
+                generationLoading.style.display = 'none';
+                
+                // Update image preview
+                previewImage.src = `data:image/jpeg;base64,${response.image_data}`;
+                generatedImageData = response.image_data;
+                
+                // Show post details form
+                postDetails.style.display = 'block';
+                
+                // Update button
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate Image';
+                
+            } catch (error) {
+                console.error('Error generating image:', error);
+                window.app.showToast('Error generating image. Please try again.', 'error');
+                
+                // Reset UI
+                generationLoading.style.display = 'none';
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate Image';
+            }
+        });
+        
+        // Handle regenerate button click
+        regenerateBtn.addEventListener('click', () => {
+            // Reset UI for new generation
+            imagePreview.style.display = 'none';
+            postDetails.style.display = 'none';
+            generatedImageData = null;
+            
+            // Focus on prompt input
+            promptInput.focus();
+        });
+        
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!generatedImageData) {
+                window.app.showToast('Please generate an image first', 'error');
+                return;
+            }
+            
+            const prompt = promptInput.value.trim();
+            const caption = document.getElementById('caption').value.trim();
+            
+            try {
+                // Disable submit button
+                const submitBtn = document.getElementById('submitPostBtn');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
+                
+                // Create post data
+                const postData = {
+                    prompt: prompt,
+                    caption: caption
+                };
+                
+                // Submit post
+                const response = await window.app.apiRequest('/posts', 'POST', postData);
+                
+                // Show success message
+                window.app.showToast('Post created successfully!', 'success');
+                
+                // Redirect to the new post
+                setTimeout(() => {
+                    window.location.href = `/post/${response.id}`;
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Error creating post:', error);
+                window.app.showToast('Error creating post. Please try again.', 'error');
+                
+                // Re-enable submit button
+                const submitBtn = document.getElementById('submitPostBtn');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-share"></i> Share Post';
+            }
+        });
+        
+        // Handle example prompt buttons
+        promptExampleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const examplePrompt = btn.dataset.prompt;
+                promptInput.value = examplePrompt;
+                promptInput.focus();
+                
+                // Scroll to top of form
+                form.scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}{{ username }}'s Profile - ImageShare{% endblock %}
+
+{% block head %}
+<script src="{{ url_for('static', path='/js/profile.js') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <!-- Profile header with user info -->
+    <div class="profile-header">
+        <div class="loading-container" id="profileLoading">
+            <div class="loading-spinner"></div>
+        </div>
+        
+        <div id="profileContent" style="display: none;">
+            <div class="profile-avatar-container">
+                <img src="/static/img/default-avatar.png" alt="Profile Avatar" class="profile-avatar">
+            </div>
+            
+            <div class="profile-info">
+                <h1 class="profile-username">{{ username }}</h1>
+                <p class="profile-email" id="profileEmail"></p>
+                <p class="profile-bio" id="profileBio"></p>
+                
+                <div class="profile-stats">
+                    <a href="/profile/{{ username }}" class="profile-stat">
+                        <span class="profile-stat-count" id="postCount">0</span>
+                        <span class="profile-stat-label">Posts</span>
+                    </a>
+                    <a href="/followers/{{ username }}" class="profile-stat">
+                        <span class="profile-stat-count" id="followerCount">0</span>
+                        <span class="profile-stat-label">Followers</span>
+                    </a>
+                    <a href="/following/{{ username }}" class="profile-stat">
+                        <span class="profile-stat-count" id="followingCount">0</span>
+                        <span class="profile-stat-label">Following</span>
+                    </a>
+                </div>
+                
+                <div class="profile-actions" id="profileActions">
+                    <!-- Follow/Edit buttons will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Profile content tabs -->
+    <div class="profile-tabs">
+        <div class="profile-tab active" data-tab="posts">
+            <i class="fas fa-th"></i> Posts
+        </div>
+        <div class="profile-tab" data-tab="liked">
+            <i class="fas fa-heart"></i> Liked
+        </div>
+    </div>
+    
+    <!-- Profile content -->
+    <div class="profile-content">
+        <div class="tab-content active" id="postsTab">
+            <div class="loading-container" id="postsLoading">
+                <div class="loading-spinner"></div>
+            </div>
+            
+            <div class="grid" id="userPosts"></div>
+            
+            <div id="noPostsMessage" style="display: none;">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3>No posts yet</h3>
+                        <p id="noPostsText">This user hasn't created any posts yet.</p>
+                        <a href="/create" class="btn btn-primary" id="createPostBtn" style="display: none;">Create Your First Post</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="likedTab">
+            <div class="loading-container" id="likedLoading">
+                <div class="loading-spinner"></div>
+            </div>
+            
+            <div class="grid" id="likedPosts"></div>
+            
+            <div id="noLikesMessage" style="display: none;">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3>No liked posts</h3>
+                        <p id="noLikesText">No posts have been liked yet.</p>
+                        <a href="/explore" class="btn btn-primary">Explore Posts</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Post template (hidden, used by JavaScript) -->
+<template id="profilePostTemplate">
+    <div class="grid-item" data-post-id="">
+        <div class="profile-post">
+            <div class="profile-post-image">
+                <img src="" alt="Post Image">
+                <div class="profile-post-overlay">
+                    <div class="profile-post-actions">
+                        <span class="profile-post-likes">
+                            <i class="fas fa-heart"></i>
+                            <span>0</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- Edit Profile Modal Content -->
+<template id="editProfileTemplate">
+    <form id="editProfileForm">
+        <div class="form-group">
+            <label for="editEmail" class="form-label">Email</label>
+            <input type="email" id="editEmail" name="email" class="form-control" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="editBio" class="form-label">Bio</label>
+            <textarea id="editBio" name="bio" class="form-control" rows="3"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="editPassword" class="form-label">New Password (leave blank to keep current)</label>
+            <input type="password" id="editPassword" name="password" class="form-control">
+        </div>
+        
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+        </div>
+    </form>
+</template>
+
+<!-- Post modal template -->
+<template id="postModalTemplate">
+    <div class="modal-post">
+        <div class="modal-post-image">
+            <img src="" alt="Post Image">
+        </div>
+        <div class="modal-post-details">
+            <div class="modal-post-header">
+                <a href="/profile/" class="modal-post-user">
+                    <img src="/static/img/default-avatar.png" alt="User Avatar">
+                    <div class="modal-post-user-info">
+                        <h3></h3>
+                    </div>
+                </a>
+                <div class="modal-post-actions dropdown" id="postOptionsDropdown">
+                    <button class="post-options-btn">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="#" class="edit-post-btn">Edit Post</a>
+                        <a href="#" class="delete-post-btn">Delete Post</a>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-post-content">
+                <p class="modal-post-caption"></p>
+                <p class="modal-post-prompt"><strong>Prompt:</strong> <span></span></p>
+                <p class="modal-post-time"></p>
+            </div>
+            <div class="modal-post-actions">
+                <button class="post-action-btn modal-like-btn">
+                    <i class="far fa-heart"></i>
+                    <span class="post-action-count">0</span>
+                </button>
+                <a href="/post/" class="post-action-btn">
+                    <i class="far fa-comment"></i>
+                    <span>View Post</span>
+                </a>
+                <button class="post-action-btn modal-share-btn">
+                    <i class="far fa-share-square"></i>
+                    <span>Share</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}

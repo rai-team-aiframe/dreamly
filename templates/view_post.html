@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}View Post - ImageShare{% endblock %}
+
+{% block head %}
+<script src="{{ url_for('static', path='/js/posts.js') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="view-post-container">
+    <div id="singlePost">
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+        </div>
+    </div>
+    
+    <div class="related-posts">
+        <h2>More Like This</h2>
+        <div id="relatedPosts" class="grid">
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template for related post -->
+<template id="relatedPostTemplate">
+    <div class="grid-item" data-post-id="">
+        <div class="related-post">
+            <div class="related-post-image">
+                <a href="/post/">
+                    <img src="" alt="Related Post">
+                </a>
+            </div>
+            <div class="related-post-info">
+                <a href="/profile/" class="related-post-user">
+                    <img src="/static/img/default-avatar.png" alt="User Avatar">
+                    <span></span>
+                </a>
+                <div class="related-post-likes">
+                    <i class="fas fa-heart"></i>
+                    <span>0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Extract post ID from URL
+        const postIdMatch = window.location.pathname.match(/\/post\/(\d+)/);
+        if (postIdMatch) {
+            const postId = postIdMatch[1];
+            
+            // Load the single post
+            loadSinglePost(postId);
+            
+            // Load related posts
+            loadRelatedPosts(postId);
+        }
+    });
+    
+    async function loadRelatedPosts(postId) {
+        const relatedContainer = document.getElementById('relatedPosts');
+        
+        try {
+            // For now, use the explore endpoint to get random posts
+            // In a real app, you'd have a related posts endpoint
+            const posts = await window.app.apiRequest('/posts');
+            
+            // Filter out the current post
+            const filteredPosts = posts.filter(post => post.id != postId);
+            
+            // Get 6 random posts
+            const randomPosts = filteredPosts
+                .sort(() => 0.5 - Math.random())
+                .slice(0, 6);
+            
+            // Clear loading spinner
+            relatedContainer.innerHTML = '';
+            
+            if (randomPosts.length === 0) {
+                relatedContainer.innerHTML = '<p class="text-center">No related posts found</p>';
+                return;
+            }
+            
+            // Render related posts
+            renderRelatedPosts(randomPosts, relatedContainer);
+            
+        } catch (error) {
+            console.error('Error loading related posts:', error);
+            relatedContainer.innerHTML = '<p class="text-center text-danger">Error loading related posts</p>';
+        }
+    }
+    
+    function renderRelatedPosts(posts, container) {
+        const template = document.getElementById('relatedPostTemplate');
+        
+        posts.forEach(post => {
+            const postEl = document.importNode(template.content, true).firstElementChild;
+            
+            // Set post ID
+            postEl.dataset.postId = post.id;
+            
+            // Set post link
+            const postLink = postEl.querySelector('.related-post-image a');
+            postLink.href = `/post/${post.id}`;
+            
+            // Set image
+            const img = postEl.querySelector('.related-post-image img');
+            img.src = `data:image/jpeg;base64,${post.image_data}`;
+            
+            // Set username and profile link
+            const userLink = postEl.querySelector('.related-post-user');
+            userLink.href = `/profile/${post.username}`;
+            userLink.querySelector('span').textContent = post.username;
+            
+            // Set like count
+            postEl.querySelector('.related-post-likes span').textContent = post.like_count;
+            
+            container.appendChild(postEl);
+        });
+    }
+</script>
+{% endblock %}

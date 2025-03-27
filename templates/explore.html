@@ -1,0 +1,908 @@
+{% extends "base.html" %}
+
+{% block title %}Explore - ImageShare{% endblock %}
+
+{% block head %}
+<style>
+    .explore-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .explore-header {
+        margin-bottom: 30px;
+    }
+
+    .explore-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        color: var(--primary-color);
+    }
+
+    .explore-filters {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .filter-tabs {
+        display: flex;
+        gap: 10px;
+    }
+
+    .filter-tab {
+        padding: 8px 16px;
+        border-radius: 20px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .filter-tab:hover {
+        background-color: #e9ecef;
+    }
+
+    .filter-tab.active {
+        background-color: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .filter-categories select {
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: 1px solid #dee2e6;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .grid-item {
+        break-inside: avoid;
+        margin-bottom: 20px;
+    }
+
+    .explore-post {
+        border-radius: 12px;
+        overflow: hidden;
+        background-color: white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .explore-post:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .explore-post-image {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .explore-post-image img {
+        width: 100%;
+        display: block;
+        transition: transform 0.5s ease;
+    }
+
+    .explore-post:hover .explore-post-image img {
+        transform: scale(1.05);
+    }
+
+    .explore-post-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 50%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        display: flex;
+        align-items: flex-end;
+        padding: 15px;
+    }
+
+    .explore-post:hover .explore-post-overlay {
+        opacity: 1;
+    }
+
+    .explore-post-actions {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .explore-post-like {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+    }
+
+    .explore-post-like i {
+        margin-right: 5px;
+    }
+
+    .explore-post-like.liked {
+        color: #e74c3c;
+    }
+
+    .explore-post-footer {
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .explore-post-user {
+        display: flex;
+        align-items: center;
+        color: var(--dark-color);
+    }
+
+    .explore-post-user img {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        margin-right: 10px;
+    }
+
+    /* Modal styles */
+    .modal-post {
+        display: flex;
+        max-height: 85vh;
+    }
+
+    .modal-post-image {
+        flex: 1;
+        max-height: 85vh;
+        overflow: hidden;
+        background-color: #f8f9fa;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-post-image img {
+        max-width: 100%;
+        max-height: 85vh;
+        object-fit: contain;
+    }
+
+    .modal-post-details {
+        width: 350px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        border-left: 1px solid #eee;
+    }
+
+    .modal-post-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .modal-post-user {
+        display: flex;
+        align-items: center;
+    }
+
+    .modal-post-user img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 10px;
+    }
+
+    .modal-post-user-info h3 {
+        font-size: 1rem;
+        margin: 0;
+    }
+
+    .modal-post-content {
+        flex-grow: 1;
+        margin-bottom: 15px;
+        overflow-y: auto;
+    }
+
+    .modal-post-caption {
+        margin-bottom: 15px;
+    }
+
+    .modal-post-prompt {
+        font-size: 0.9rem;
+        color: #777;
+        margin-bottom: 15px;
+    }
+
+    .modal-post-time {
+        font-size: 0.8rem;
+        color: #777;
+    }
+
+    .modal-post-actions {
+        display: flex;
+        align-items: center;
+        padding-top: 15px;
+        border-top: 1px solid #eee;
+    }
+
+    /* Loading box placeholder styles */
+    .loading-box {
+        background: linear-gradient(90deg, #f0f0f0 0%, #e0e0e0 50%, #f0f0f0 100%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 12px;
+        height: 250px;
+    }
+
+    @keyframes shimmer {
+        0% {
+            background-position: -200% 0;
+        }
+        100% {
+            background-position: 200% 0;
+        }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .grid {
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        }
+    }
+
+    @media (max-width: 768px) {
+        .modal-post {
+            flex-direction: column;
+            max-height: none;
+        }
+
+        .modal-post-image {
+            max-height: 60vh;
+        }
+
+        .modal-post-details {
+            width: 100%;
+            border-left: none;
+            border-top: 1px solid #eee;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .grid {
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px;
+        }
+
+        .explore-filters {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .filter-tabs {
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+    }
+
+    /* No posts message */
+    .no-posts {
+        text-align: center;
+        padding: 40px 20px;
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .no-posts h3 {
+        margin-bottom: 10px;
+        color: var(--dark-color);
+    }
+
+    .no-posts p {
+        color: #777;
+        margin-bottom: 20px;
+    }
+</style>
+<script src="{{ url_for('static', path='/js/posts.js') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="explore-container">
+    <div class="explore-header">
+        <h1>Explore</h1>
+        <p>Discover amazing AI-generated images from the community</p>
+    </div>
+    
+    <div class="explore-filters">
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="latest">Latest</button>
+            <button class="filter-tab" data-filter="popular">Popular</button>
+            <button class="filter-tab" data-filter="trending">Trending</button>
+        </div>
+        
+        <div class="filter-categories">
+            <select id="categoryFilter" class="form-control">
+                <option value="">All Categories</option>
+                <option value="landscape">Landscape</option>
+                <option value="portrait">Portrait</option>
+                <option value="abstract">Abstract</option>
+                <option value="scifi">Sci-Fi</option>
+                <option value="fantasy">Fantasy</option>
+            </select>
+        </div>
+    </div>
+    
+    <div id="explorePosts" class="grid">
+        <!-- Loading placeholders -->
+        {% for i in range(12) %}
+        <div class="loading-box"></div>
+        {% endfor %}
+    </div>
+    
+    <div id="loadMoreContainer" class="text-center mt-4">
+        <button id="loadMoreBtn" class="btn btn-primary">Load More</button>
+    </div>
+</div>
+
+<!-- Post template (hidden, used by JavaScript) -->
+<template id="explorePostTemplate">
+    <div class="grid-item" data-post-id="">
+        <div class="explore-post">
+            <div class="explore-post-image">
+                <img src="" alt="Post Image">
+                <div class="explore-post-overlay">
+                    <div class="explore-post-actions">
+                        <button class="explore-post-like">
+                            <i class="far fa-heart"></i>
+                            <span>0</span>
+                        </button>
+                        <a href="/post/" class="explore-post-view" style="color: white">
+                            <i class="far fa-eye"></i>
+                            <span>View</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="explore-post-footer">
+                <a href="/profile/" class="explore-post-user">
+                    <img src="/static/img/default-avatar.png" alt="User Avatar">
+                    <span></span>
+                </a>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- Post modal template -->
+<template id="postModalTemplate">
+    <div class="modal-post">
+        <div class="modal-post-image">
+            <img src="" alt="Post Image">
+        </div>
+        <div class="modal-post-details">
+            <div class="modal-post-header">
+                <a href="/profile/" class="modal-post-user">
+                    <img src="/static/img/default-avatar.png" alt="User Avatar">
+                    <div class="modal-post-user-info">
+                        <h3></h3>
+                    </div>
+                </a>
+            </div>
+            <div class="modal-post-content">
+                <p class="modal-post-caption"></p>
+                <p class="modal-post-prompt"><strong>Prompt:</strong> <span></span></p>
+                <p class="modal-post-time"></p>
+            </div>
+            <div class="modal-post-actions">
+                <button class="post-action-btn modal-like-btn">
+                    <i class="far fa-heart"></i>
+                    <span class="post-action-count">0</span>
+                </button>
+                <a href="/post/" class="post-action-btn">
+                    <i class="far fa-comment"></i>
+                    <span>View Post</span>
+                </a>
+                <button class="post-action-btn modal-share-btn">
+                    <i class="far fa-share-square"></i>
+                    <span>Share</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Load explore posts
+        loadExplorePosts();
+        
+        // Setup filter tabs
+        setupFilterTabs();
+        
+        // Setup category filter
+        setupCategoryFilter();
+        
+        // Setup load more button
+        setupLoadMoreButton();
+    });
+    
+    let currentFilter = 'latest';
+    let currentCategory = '';
+    let currentPage = 1;
+    let isLoading = false;
+    let hasMorePosts = true;
+    
+    async function loadExplorePosts(append = false) {
+        if (isLoading || !hasMorePosts && append) return;
+        
+        isLoading = true;
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+        if (loadMoreBtn) loadMoreBtn.disabled = true;
+        
+        try {
+            // Prepare query parameters
+            const params = new URLSearchParams({
+                filter: currentFilter,
+                page: currentPage
+            });
+            
+            if (currentCategory) {
+                params.append('category', currentCategory);
+            }
+            
+            // Fetch posts from the API
+            const response = await fetch(`/posts?${params.toString()}`);
+            if (!response.ok) {
+                throw new Error('Failed to load posts');
+            }
+            
+            const posts = await response.json();
+            const exploreContainer = document.getElementById('explorePosts');
+            
+            // Clear container if not appending
+            if (!append) {
+                exploreContainer.innerHTML = '';
+            }
+            
+            if (posts.length === 0) {
+                hasMorePosts = false;
+                
+                if (!append) {
+                    exploreContainer.innerHTML = `
+                        <div class="no-posts" style="grid-column: 1 / -1;">
+                            <h3>No posts found</h3>
+                            <p>Try different filters or check back later</p>
+                        </div>
+                    `;
+                }
+                
+                if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+                return;
+            }
+            
+            // Render posts
+            renderExplorePosts(posts, exploreContainer);
+            
+            // Update load more button visibility
+            if (loadMoreBtn) {
+                loadMoreBtn.style.display = posts.length < 12 ? 'none' : 'inline-block';
+                loadMoreBtn.disabled = false;
+            }
+            
+            // Increment page number for pagination
+            currentPage++;
+            
+        } catch (error) {
+            console.error('Error loading explore posts:', error);
+            const exploreContainer = document.getElementById('explorePosts');
+            
+            if (!append) {
+                exploreContainer.innerHTML = `
+                    <div class="no-posts" style="grid-column: 1 / -1;">
+                        <h3>Error loading posts</h3>
+                        <p>Something went wrong. Please try again later.</p>
+                    </div>
+                `;
+            }
+            
+            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+        } finally {
+            isLoading = false;
+        }
+    }
+    
+    function renderExplorePosts(posts, container) {
+        const template = document.getElementById('explorePostTemplate');
+        
+        posts.forEach(post => {
+            const postEl = document.importNode(template.content, true).firstElementChild;
+            
+            // Set post ID
+            postEl.dataset.postId = post.id;
+            
+            // Set post image
+            const imgEl = postEl.querySelector('.explore-post-image img');
+            imgEl.src = `data:image/jpeg;base64,${post.image_data}`;
+            
+            // Set post link
+            const postViewLink = postEl.querySelector('.explore-post-view');
+            postViewLink.href = `/post/${post.id}`;
+            
+            // Set username
+            postEl.querySelector('.explore-post-user span').textContent = post.username;
+            
+            // Set user profile link
+            const userLink = postEl.querySelector('.explore-post-user');
+            userLink.href = `/profile/${post.username}`;
+            
+            // Update like count
+            const likeCount = postEl.querySelector('.explore-post-like span');
+            likeCount.textContent = post.like_count;
+            
+            // Set liked state
+            const likeBtn = postEl.querySelector('.explore-post-like');
+            const likeIcon = likeBtn.querySelector('i');
+            
+            if (post.liked_by_user) {
+                likeBtn.classList.add('liked');
+                likeIcon.classList.replace('far', 'fas');
+            }
+            
+            // Load image and handle click events
+            const img = new Image();
+            img.onload = () => {
+                // When image loads, remove loading state
+                imgEl.classList.add('loaded');
+            };
+            img.src = `data:image/jpeg;base64,${post.image_data}`;
+            
+            // Add click event to open modal
+            imgEl.addEventListener('click', (e) => {
+                e.preventDefault();
+                showPostModal(post);
+            });
+            
+            // Add event listener for like button
+            likeBtn.addEventListener('click', async (e) => {
+                e.stopPropagation(); // Prevent opening modal
+                
+                try {
+                    // Check if user is logged in
+                    const token = getCookie('access_token');
+                    if (!token) {
+                        window.location.href = '/login';
+                        return;
+                    }
+                    
+                    const response = await fetch(`/posts/like/${post.id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'include'
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to like post');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Update the UI
+                    if (data.action === 'liked') {
+                        likeBtn.classList.add('liked');
+                        likeIcon.classList.replace('far', 'fas');
+                    } else {
+                        likeBtn.classList.remove('liked');
+                        likeIcon.classList.replace('fas', 'far');
+                    }
+                    
+                    // Update the count
+                    likeCount.textContent = data.like_count;
+                    
+                } catch (error) {
+                    console.error('Error handling like:', error);
+                    showToast('Error liking post. Please try again.', 'error');
+                }
+            });
+            
+            container.appendChild(postEl);
+        });
+    }
+    
+    function setupFilterTabs() {
+        const filterTabs = document.querySelectorAll('.filter-tab');
+        
+        filterTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs
+                filterTabs.forEach(t => t.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                tab.classList.add('active');
+                
+                // Update current filter
+                currentFilter = tab.dataset.filter;
+                
+                // Reset pagination
+                currentPage = 1;
+                hasMorePosts = true;
+                
+                // Load posts with new filter
+                loadExplorePosts();
+            });
+        });
+    }
+    
+    function setupCategoryFilter() {
+        const categoryFilter = document.getElementById('categoryFilter');
+        
+        categoryFilter.addEventListener('change', () => {
+            // Update current category
+            currentCategory = categoryFilter.value;
+            
+            // Reset pagination
+            currentPage = 1;
+            hasMorePosts = true;
+            
+            // Load posts with new category
+            loadExplorePosts();
+        });
+    }
+    
+    function setupLoadMoreButton() {
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+        
+        loadMoreBtn.addEventListener('click', () => {
+            loadExplorePosts(true); // Append mode
+        });
+    }
+    
+    function showPostModal(post) {
+        const template = document.getElementById('postModalTemplate');
+        const modalContent = document.importNode(template.content, true).firstElementChild;
+        
+        // Set post image
+        modalContent.querySelector('.modal-post-image img').src = `data:image/jpeg;base64,${post.image_data}`;
+        
+        // Set username
+        modalContent.querySelector('.modal-post-user-info h3').textContent = post.username;
+        
+        // Set user profile link
+        modalContent.querySelector('.modal-post-user').href = `/profile/${post.username}`;
+        
+        // Set caption and prompt
+        modalContent.querySelector('.modal-post-caption').textContent = post.caption || '';
+        modalContent.querySelector('.modal-post-prompt span').textContent = post.prompt;
+        
+        // Set time
+        const createdAt = new Date(post.created_at);
+        modalContent.querySelector('.modal-post-time').textContent = formatDate(createdAt);
+        
+        // Set post link
+        modalContent.querySelector('.modal-post-actions a').href = `/post/${post.id}`;
+        
+        // Update like count
+        const likeCount = modalContent.querySelector('.post-action-count');
+        likeCount.textContent = post.like_count;
+        
+        // Set liked state
+        const likeBtn = modalContent.querySelector('.modal-like-btn');
+        const likeIcon = likeBtn.querySelector('i');
+        
+        if (post.liked_by_user) {
+            likeBtn.classList.add('liked');
+            likeIcon.classList.replace('far', 'fas');
+        }
+        
+        // Add event listener for like button
+        likeBtn.addEventListener('click', async () => {
+            try {
+                // Check if user is logged in
+                const token = getCookie('access_token');
+                if (!token) {
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                const response = await fetch(`/posts/like/${post.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to like post');
+                }
+                
+                const data = await response.json();
+                
+                // Update the UI
+                if (data.action === 'liked') {
+                    likeBtn.classList.add('liked');
+                    likeIcon.classList.replace('far', 'fas');
+                } else {
+                    likeBtn.classList.remove('liked');
+                    likeIcon.classList.replace('fas', 'far');
+                }
+                
+                // Update the count
+                likeCount.textContent = data.like_count;
+                
+                // Also update the explore post like button
+                const explorePost = document.querySelector(`.grid-item[data-post-id="${post.id}"]`);
+                if (explorePost) {
+                    const exploreLikeBtn = explorePost.querySelector('.explore-post-like');
+                    const exploreLikeIcon = exploreLikeBtn.querySelector('i');
+                    const exploreLikeCount = exploreLikeBtn.querySelector('span');
+                    
+                    exploreLikeCount.textContent = data.like_count;
+                    
+                    if (data.action === 'liked') {
+                        exploreLikeBtn.classList.add('liked');
+                        exploreLikeIcon.classList.replace('far', 'fas');
+                    } else {
+                        exploreLikeBtn.classList.remove('liked');
+                        exploreLikeIcon.classList.replace('fas', 'far');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error handling like:', error);
+                showToast('Error liking post. Please try again.', 'error');
+            }
+        });
+        
+        // Add event listener for share button
+        const shareBtn = modalContent.querySelector('.modal-share-btn');
+        shareBtn.addEventListener('click', () => {
+            const postUrl = `${window.location.origin}/post/${post.id}`;
+            
+            // If Web Share API is available
+            if (navigator.share) {
+                navigator.share({
+                    title: `Post by ${post.username}`,
+                    text: post.caption || 'Check out this image on ImageShare',
+                    url: postUrl
+                })
+                .catch(err => console.error('Error sharing:', err));
+            } else {
+                // Fallback: copy to clipboard
+                navigator.clipboard.writeText(postUrl)
+                    .then(() => showToast('Link copied to clipboard', 'success'))
+                    .catch(err => console.error('Error copying:', err));
+            }
+        });
+        
+        // Create and show modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-backdrop"></div>
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Post by ${post.username}</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        ${modalContent.outerHTML}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Add event listeners for closing
+        const closeBtn = modal.querySelector('.close');
+        const backdrop = modal.querySelector('.modal-backdrop');
+        
+        closeBtn.addEventListener('click', () => {
+            modal.remove();
+        });
+        
+        backdrop.addEventListener('click', () => {
+            modal.remove();
+        });
+        
+        // Prevent scrolling of background
+        document.body.style.overflow = 'hidden';
+        
+        // Reset overflow when modal is closed
+        const resetOverflow = () => {
+            document.body.style.overflow = '';
+        };
+        
+        closeBtn.addEventListener('click', resetOverflow);
+        backdrop.addEventListener('click', resetOverflow);
+    }
+    
+    // Helper function to format dates
+    function formatDate(date) {
+        const now = new Date();
+        const diff = Math.floor((now - date) / 1000); // Difference in seconds
+        
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return `${Math.floor(diff / 60)} minute${Math.floor(diff / 60) > 1 ? 's' : ''} ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} hour${Math.floor(diff / 3600) > 1 ? 's' : ''} ago`;
+        if (diff < 2592000) return `${Math.floor(diff / 86400)} day${Math.floor(diff / 86400) > 1 ? 's' : ''} ago`;
+        
+        // If older, show actual date
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return date.toLocaleDateString(undefined, options);
+    }
+    
+    // Helper function to show toast notifications
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        
+        let icon = 'info-circle';
+        if (type === 'success') icon = 'check-circle';
+        if (type === 'error') icon = 'exclamation-circle';
+        
+        toast.innerHTML = `
+            <i class="fas fa-${icon} toast-icon"></i>
+            <div class="toast-message">${message}</div>
+            <button class="toast-close">&times;</button>
+        `;
+        
+        // Find or create toast container
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            document.body.appendChild(toastContainer);
+        }
+        
+        toastContainer.appendChild(toast);
+        
+        // Add event listener to close button
+        const closeBtn = toast.querySelector('.toast-close');
+        closeBtn.addEventListener('click', () => {
+            toast.remove();
+        });
+        
+        // Automatically remove toast after 3 seconds
+        setTimeout(() => {
+            toast.classList.add('toast-fadeout');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 300);
+        }, 3000);
+    }
+    
+    // Helper function to get cookies
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+</script>
+{% endblock %}
